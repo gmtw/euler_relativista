@@ -58,7 +58,11 @@
 !   This is a vector that contains u(x,y) (do not touch)
 !------------------------------------------------------------------------------
       real :: u (neq,0:nx+1,0:ny+1)
-
+!------------------------------------------------------------------------------
+!   Declaracion de los valores del factor de lorentz y la entalpia
+!------------------------------------------------------------------------------
+      real :: lor
+      real :: h
         end module globals
 !------------------------------------------------------------------------------
 ! End module globals
@@ -118,7 +122,7 @@
       real, intent(out) :: time, tprint
       integer, intent (out) :: itprint
       integer ::i,j
-      real :: x,y, rad
+      real :: x,y, rad, lorin, hin, lorout, hout !se declaro los valores nuevos de lorent y entalpia para blast wave
 
 !------------------------------------------------------------------------------
 ! For the 2D circular blast:
@@ -133,17 +137,25 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.0) then
-            u(1,i,j)=rhoin
-            u(2,i,j)=rhoin*vxin
-            u(3,i,j)=rhoin*vyin
-            u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5/u(1,i,j)*u(3,i,j)*u(3,i,j)
+          if (rad < 1.0) then
+            
+            lorin = (1-(vxin**2+vyin**2))**(-1/2) !agregamiento del factor de lorentz
+            hin = 1-pin/rhoin                     !agregamiento de la entalpia
+            
+            u(1,i,j)=rhoin*lorin                  !agregamiento del factor de lorentz y entalpia
+            u(2,i,j)=rhoin*vxin*lorin**2*hin
+            u(3,i,j)=rhoin*vyin**lorin**2*hin
+            u(4,i,j)=rhoin*lorin**2*hin-pin
           else
-            u(1,i,j)=rhoout
-            u(2,i,j)=rhoout*vxout
-            u(3,i,j)=rhoout*vyout
-            u(4,i,j)=pout/(gamma-1.) + 0.5/u(1,i,j)*u(2,i,j)*u(2,i,j) + 0.5/u(1,i,j)*u(3,i,j)*u(3,i,j)
-
+          
+            lorout = (1-(vxout**2+vyout**2))**(-1/2) !agregamiento del factor de lorentz
+            hin = 1-pout/rhoout                      !agregamiento de la entalpia
+            
+            u(1,i,j)=rhoout*lorout                   !agregamiento del factor de lorentz y entalpia
+            u(2,i,j)=rhoout*vxout*lorout**2*hout
+            u(3,i,j)=rhoout*vyout**lorout**2*hout
+            u(4,i,j)=rhoout*lorout**2*hout-pout
+            
           end if
 
         end do
