@@ -3,6 +3,7 @@
 !=======================================================================
 !un cambio diferente en el programa
 !otro cambio
+!mas cambios
 !=======================================================================
 !   This module contains global variables
       module globals
@@ -31,8 +32,8 @@
       real, parameter :: ymax=1., dy=ymax/float(ny)
       real, parameter :: gamma=1.6666666
 
-      real, parameter :: tmax= 30.0        ! maximum integration time
-      real, parameter :: dtprint=1.0       ! interval between outputs
+      real, parameter :: tmax= 1.0        ! maximum integration time
+      real, parameter :: dtprint=0.01       ! interval between outputs
 
       real, parameter :: rhoin = 10.0
       real, parameter :: rhoout = 0.001
@@ -52,17 +53,13 @@
 ! 0.0 = open boundary conditions
 ! 1.0 = Jet injection
 !--------------------------------------
-      real, parameter :: bound=10.0
+      real, parameter :: bound=0.0
 
 !------------------------------------------------------------------------------
 !   This is a vector that contains u(x,y) (do not touch)
 !------------------------------------------------------------------------------
       real :: u (neq,0:nx+1,0:ny+1)
-!------------------------------------------------------------------------------
-!   Declaracion de los valores del factor de lorentz y la entalpia
-!------------------------------------------------------------------------------
-      real :: lor
-      real :: h
+
         end module globals
 !------------------------------------------------------------------------------
 ! End module globals
@@ -122,7 +119,7 @@
       real, intent(out) :: time, tprint
       integer, intent (out) :: itprint
       integer ::i,j
-      real :: x,y, rad, lorin, hin, lorout, hout !se declaro los valores nuevos de lorent y entalpia para blast wave
+      real :: x,y, rad
 
 !------------------------------------------------------------------------------
 ! For the 2D circular blast:
@@ -137,26 +134,18 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 1.0) then
-
-            lorin = (1-(vxin**2+vyin**2))**(-1/2) !agregamiento del factor de lorentz
-            hin = 1-pin/rhoin                     !agregamiento de la entalpia
-
-            u(1,i,j)=rhoin*lorin                  !agregamiento del factor de lorentz y entalpia
-            u(2,i,j)=rhoin*vxin*lorin**2*hin
-            u(3,i,j)=rhoin*vyin**lorin**2*hin
-            u(4,i,j)=rhoin*lorin**2*hin-pin
+          if (rad < 0.3) then
+            u(1,i,j)=rhoin
+            u(2,i,j)=rhoin*vxin
+            u(3,i,j)=rhoin*vyin
+            u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
           else
+            u(1,i,j)=rhoout
+            u(2,i,j)=rhoout*vxout
+            u(3,i,j)=rhoout*vyout
+            u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
 
-            lorout = (1-(vxout**2+vyout**2))**(-1/2) !agregamiento del factor de lorentz
-            hin = 1-pout/rhoout                      !agregamiento de la entalpia
-
-            u(1,i,j)=rhoout*lorout                   !agregamiento del factor de lorentz y entalpia
-            u(2,i,j)=rhoout*vxout*lorout**2*hout
-            u(3,i,j)=rhoout*vyout**lorout**2*hout
-            u(4,i,j)=rhoout*lorout**2*hout-pout
-
-          end if
+    end if
 
         end do
       end do
@@ -321,16 +310,15 @@
           vy=u(3,i,j)/rho
           P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
 
-          !modificaón de los flujos
-          f(1,i,j)=rho*vx*lor
-          f(2,i,j)=rho*vx*vx*lor**2*h+P
-          f(3,i,j)=rho*vx*vy*lor**2*h+P
-          f(4,i,j)=rho*vx*lor**2*h
+          f(1,i,j)=rho*vx
+          f(2,i,j)=rho*vx*vx+P
+          f(3,i,j)=rho*vx*vy
+          f(4,i,j)=vx*(u(4,i,j)+P)
 
-          g(1,i,j)=rho*vy*lor
-          g(2,i,j)=rho*vx*vy*lor**2*h
-          g(3,i,j)=rho*vy*vy*lor**2*h+P
-          g(4,i,j)=rho*vy*lor**2*h
+          g(1,i,j)=rho*vy
+          g(2,i,j)=rho*vx*vy
+          g(3,i,j)=rho*vy*vy+P
+          g(4,i,j)=vy*(u(4,i,j)+P)
 
         end do
       end do
@@ -505,124 +493,4 @@
 
   return
 end subroutine boundaries
-!=======================================================================
-!=======================================================================
-!subrutina de desacoplamiento
-subroutine uprim(u,p)
-
-  use parameters, only : neq, gamma
-  implicit none
-  real*8 :: u(neq), p(neq)
-  real*8 :: w, m2, lor
-  real*8 :: u2, alpha, chi
-
-  m2 = sum(u(2:4)**2)               ! v^2
-
-  call newrap(u, w, m2)
-
-  alpha = m2 / w**2   ! alpha < 1 !
-  u2  = alpha/(1d0-alpha)
-
-  lor = sqrt(1d0 + u2)
-
-  ! velocities
-  p(2:4) = u(2:4) / w
-
-  ! determination of the mass density
-  p(1) = u(1)/lor
-
-  ! thermal pressure
-  chi = (w - u(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
-
-  p(5)   = (gamma - 1d0)/gamma * chi
-
-  p(5) = max(p(5),1d-10*p(5))
-
-  if(p(1).lt.0d0) then
-    print*,'negative density in uprim'
-    stop
-  end if
-
-end subroutine uprim
-!------------------------------------------------------------------------------!
-
-!------------------------------------------------------------------------------!
-subroutine newrap(u, w, m2)
-
-  use parameters, only : neq, gamma
-  implicit none
-
-  real*8, intent(in)  :: m2
-  real*8, intent(out) :: w
-  real*8, parameter :: eps = 1d-10
-  real*8 :: a, b, c, mu, alpha, u2, lor, chi, dpdchi, dpdrho
-  real*8 :: w0, dpdw, f, dfdw, pg, dv2dw, dchidw, drhodw, u(neq)
-  integer :: i
-
-  if(u(5)**2.lt.m2+u(1)**2.or.u(5).le.0d0) then
-    print*,'error in newrap'
-    stop
-  end if
-
-  a = 3d0;   b = 2d0 * (-u(5));   c = m2
-  if(b**2-a*c.lt.0d0) then
-     print*,'b**2-a*c<0'
-     stop
-  end if
-  w = ( - b + sqrt(b**2-a*c) ) / a   ! initial guess for w = rho * h * lor**2
-
-  w0 = w
-  mu = 1d0
-100 continue
-  do i = 1, 40
-
-    alpha = m2 / w**2   ! alpha < 1 !
-
-    u2  = alpha/(1d0-alpha)
-
-    if(u2.lt.0d0) then
-      print*,'u2<0cc'
-      print*,u
-      stop
-    end if
-
-    lor = sqrt(1d0 + u2)
-
-    chi = (w - u(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
-
-    ! ideal gas case
-    pg     = (gamma - 1d0)/gamma * chi
-    dpdchi = (gamma - 1d0)/gamma
-    dpdrho = 0d0
-
-    f = w - pg - u(5)  ! f(w) = 0
-
-    if(abs(f).lt.eps) return
-
-    dv2dw  = lor/w**3*m2
-    dchidw = 1d0/lor**2 + dv2dw*(u(1)+2d0*lor*chi)
-
-    drhodw = dv2dw*u(1)
-
-    dpdw = dpdchi*dchidw + dpdrho*drhodw
-
-    dfdw   = 1d0 - dpdw    ! df/dw
-
-    w  = w0 - mu * f / dfdw                       ! Newton-raphson iteration
-
-    if(abs(w-w0).lt.eps) return
-
-    w0 = w
-
-  end do
-
-  if(mu.gt.0.1) then
-    mu = mu/2d0
-    goto 100
-  end if
-
-end subroutine newrap
-!------------------------------------------------------------------------------!
-
-
 !=======================================================================
