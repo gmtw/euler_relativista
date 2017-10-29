@@ -30,18 +30,18 @@
       integer, parameter :: nx=100, ny=100, neq=4
       real, parameter :: xmax=1., dx=xmax/float(nx)
       real, parameter :: ymax=1., dy=ymax/float(ny)
-      real, parameter :: gamma=1.6666666
+      real, parameter :: gamma=4./3.
 
       real, parameter :: tmax= 1.0        ! maximum integration time
       real, parameter :: dtprint=0.1       ! interval between outputs
 
-      real, parameter :: rhoin = 10.0
-      real, parameter :: rhoout = 0.001
-      real, parameter :: pin = 100.0
-      real, parameter :: pout = 1.0
+      real, parameter :: rhoin = 12.0
+      real, parameter :: rhoout = 12.0 !density
+      real, parameter :: pin = 10.0
+      real, parameter :: pout = 10.0   !pressure
       real, parameter :: vxin = 0.0
       real, parameter :: vyin = 0.0
-      real, parameter :: vxout = 0.0
+      real, parameter :: vxout = 0.8    !velocity
       real, parameter :: vyout = 0.0
       real, parameter :: xc = 0.5
       real, parameter :: yc = 0.5
@@ -86,7 +86,7 @@
       call initconds(time, tprint, itprint)     ! conditions at t=0
       do while (time.lt.tmax)                   ! stops when t = tmax
         if(time.ge.tprint) then                 ! prints data in terminal
-          write (*,*) itprint+1,time,tmax,dt
+!          write (*,*) itprint+1,time,tmax,dt
           call output (itprint)                 ! print data output
           tprint=tprint+dtprint
           itprint=itprint+1
@@ -121,7 +121,7 @@
       real, intent(out) :: time, tprint
       integer, intent (out) :: itprint
       integer ::i,j
-      real :: x,y, rad
+      real :: x,y, rad, lorin,lorout, hin,hout
 
 !------------------------------------------------------------------------------
 ! For the 2D circular blast:
@@ -136,19 +136,52 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.3) then
-            u(1,i,j)=rhoin
-            u(2,i,j)=rhoin*vxin
-            u(3,i,j)=rhoin*vyin
-            u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+          if (rad < 0.0) then
+           
+            lorin=1/sqrt(1-(vxin**2+vyin**2))
+            hin=1.+gamma/(gamma-1.)*pin/rhoin
+           
+            u(1,i,j)=rhoin*lorin
+            u(2,i,j)=rhoin*vxin*lorin**2*hin
+            u(3,i,j)=rhoin*vyin*lorin**2*hin
+            u(4,i,j)=rhoin*lorin**2*hin-pin
+
+           ! u(1,i,j)=rhoin
+           ! u(2,i,j)=rhoin*vxin
+           ! u(3,i,j)=rhoin*vyin
+            !u(4,i,j)=rhoin-pin
+           ! u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+
           else
-            u(1,i,j)=rhoout
-            u(2,i,j)=rhoout*vxout
-            u(3,i,j)=rhoout*vyout
-            u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+            lorout=1./sqrt(1.-(vxout**2+vyout**2))
+            hout=1.+gamma/(gamma-1.)*pout/rhoout
 
-    end if
+            u(1,i,j)=rhoout*lorout
+            u(2,i,j)=rhoout*vxout*lorout**2*hout
+            u(3,i,j)=rhoout*vyout*lorout**2*hout
+            u(4,i,j)=rhoout*lorout**2*hout-pout
 
+           ! u(1,i,j)=rhoout
+           ! u(2,i,j)=rhoout*vxout
+           ! u(3,i,j)=rhoout*vyout
+            !u(4,i,j)=rhoout-pout
+           ! u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+
+          end if
+          qu(1) = u(1,i,j)
+          qu(2) = u(2,i,j)
+          qu(3) = u(3,i,j)
+          qu(4) = u(4,i,j)
+
+          print*, "entra p" ,rhoout , vxout , vyout , pout
+
+          print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+
+          print*, "h      ",hout
+
+          call uprim(qu,qp)
+
+          print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
         end do
       end do
 
@@ -500,38 +533,38 @@ end subroutine boundaries
 
 !=======================================================================
 
-subroutine uprim(q,p)
+subroutine uprim(qu,qp)
 
 !    use parameters, only : neq, gamma
-     use globals
+     use globals, only : neq, gamma
     implicit none
-    real :: q(neq), p(neq)
+    real :: qu(neq), qp(neq)
     real :: w, m2, lor
-    real*8 :: u2, alpha, chi
+    real :: u2, alpha, chi
 
-    m2 = sum(q(2:3)**2)               ! v^2
+    m2 = sum(qu(2:3)**2)               ! v^2
 
-    call newrap(q, w, m2)
+    call newrap(qu, w, m2)
 
     alpha = m2 / w**2   ! alpha < 1 !
-    u2  = alpha/(1d0-alpha)
+    u2  = alpha/(1.0-alpha)
 
-    lor = sqrt(1d0 + u2)
+    lor = sqrt(1.0 + u2)
 
     ! velocities
-    p(2:3) = q(2:3) / w
+    qp(2:3) = qu(2:3) / w
 
     ! determination of the mass density
-    p(4) = q(1)/lor
+    qp(1) = qu(1)/lor
 
     ! thermal pressure
-    chi = (w - q(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
+    chi = (w - qu(1)*(1.0+u2/(lor+1.0)))/(1.0+u2)
 
-    p(1)   = (gamma - 1d0)/gamma * chi
+    qp(4)   = (gamma - 1.0)/gamma * chi
 
-    p(1) = max(p(1),1d-10*p(4))
+    qp(4) = max(qp(4),1d-10*qp(1))
 
-    if(p(4).lt.0d0) then
+    if(qp(1).lt.0.0) then
       print*,'negative density in uprim'
       stop
     end if
@@ -540,67 +573,67 @@ subroutine uprim(q,p)
 ! !------------------------------------------------------------------------------!
 
 ! !------------------------------------------------------------------------------!
-  subroutine newrap(q, w, m2)
+  subroutine newrap(qu, w, m2)
 
 !    use parameters, only : neq, gamma
-    use globals
+    use globals , only : neq, gamma
     implicit none
-!    real, intent(in) :: q(neq)
+!    real, intent(in) :: qu(neq)
     real, intent(in)  :: m2
     real, intent(out) :: w
     real, parameter :: eps = 1d-10
     real :: a, b, c, mu, alpha, u2, lor, chi, dpdchi, dpdrho
-    real :: w0, dpdw, f, dfdw, pg, dv2dw, dchidw, drhodw, q(neq)
+    real :: w0, dpdw, f, dfdw, pg, dv2dw, dchidw, drhodw, qu(neq)
     integer :: k
 
-    if(q(4)**2.lt.m2+q(1)**2.or.q(4).le.0d0) then
-   !   print*,'error in newrap'
-    !  stop
+    if(qu(4)**2.lt.m2+qu(1)**2.or.qu(4).le.0.0) then
+      print*,'error in newrap'
+      stop
     end if
 
-    a = 3d0;   b = 2d0 * (-q(4));   c = m2
-    if(b**2-a*c.lt.0d0) then
+    a = 3.0;   b = 2.0 * (-qu(4));   c = m2
+    if(b**2-a*c.lt.0.0) then
        print*,'b**2-a*c<0'
        stop
     end if
     w = ( - b + sqrt(b**2-a*c) ) / a   ! initial guess for w = rho * h * lor**2
 
     w0 = w
-    mu = 1d0
+    mu = 1.0
   100 continue
     do k = 1, 40
 
       alpha = m2 / w**2   ! alpha < 1 !
 
-      u2  = alpha/(1d0-alpha)
+      u2  = alpha/(1.0-alpha)
 
-      if(u2.lt.0d0) then
+      if(u2.lt.0.0) then
         print*,'u2<0cc'
-        print*,q
+        print*,qu
         stop
       end if
 
-      lor = sqrt(1d0 + u2)
+      lor = sqrt(1.0 + u2)
 
-      chi = (w - q(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
+      chi = (w - qu(1)*(1.0+u2/(lor+1.0)))/(1.0+u2)
 
       ! ideal gas case        
-      pg     = (gamma - 1d0)/gamma * chi
-      dpdchi = (gamma - 1d0)/gamma
-      dpdrho = 0d0
+      pg     = (gamma - 1.0)/gamma * chi
+      dpdchi = (gamma - 1.0)/gamma
+      dpdrho = 0.0
 
-      f = w - pg - q(4)  ! f(w) = 0
+      f = w - pg - qu(4)  ! f(w) = 0
 
       if(abs(f).lt.eps) return
 
       dv2dw  = lor/w**3*m2
-      dchidw = 1d0/lor**2 + dv2dw*(q(1)+2d0*lor*chi)
+      dchidw = 1.0/lor**2 + dv2dw*(qu(1)+2.0*lor*chi)
 
-      drhodw = dv2dw*q(1)
+      drhodw = dv2dw*qu(1)
 
       dpdw = dpdchi*dchidw + dpdrho*drhodw
 
-      dfdw   = 1d0 - dpdw    ! df/dw
+      dfdw   = 1.0 - dpdw    ! df/dw
 
       w  = w0 - mu * f / dfdw                       ! Newton-raphson iteration
 
@@ -611,7 +644,7 @@ subroutine uprim(q,p)
     end do
 
     if(mu.gt.0.1) then
-      mu = mu/2d0
+      mu = mu/2.0
       goto 100
     end if
 
