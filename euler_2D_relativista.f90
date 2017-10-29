@@ -336,7 +336,7 @@
       real, intent(in) :: u(neq,0:nx+1,0:ny+1)
       real, intent(out) :: f(neq,0:nx+1,0:ny+1), g(neq,0:nx+1,0:ny+1)
       integer :: i, j
-      real :: rho, vx, vy, P
+      real :: rho, vx, vy, P, lor,h
 
       do i=0,nx+1
         do j=0,ny+1
@@ -345,15 +345,15 @@
           vy=u(3,i,j)/rho
           P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
 
-          f(1,i,j)=rho*vx
-          f(2,i,j)=rho*vx*vx+P
-          f(3,i,j)=rho*vx*vy
-          f(4,i,j)=vx*(u(4,i,j)+P)
+          f(1,i,j)=rho*vx*lor
+          f(2,i,j)=rho*vx*vx*lor**2*h+P
+          f(3,i,j)=rho*vx*vy*lor**2*h
+          f(4,i,j)=rho*vx*lor**2*h
 
-          g(1,i,j)=rho*vy
-          g(2,i,j)=rho*vx*vy
-          g(3,i,j)=rho*vy*vy+P
-          g(4,i,j)=vy*(u(4,i,j)+P)
+          g(1,i,j)=rho*vy*lor
+          g(2,i,j)=rho*vx*vy*lor**2*h
+          g(3,i,j)=rho*vy*vy*lor**2*h+P
+          g(4,i,j)=rho*vy*lor**2*h
 
         end do
       end do
