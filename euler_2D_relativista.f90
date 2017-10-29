@@ -33,7 +33,7 @@
       real, parameter :: gamma=1.6666666
 
       real, parameter :: tmax= 1.0        ! maximum integration time
-      real, parameter :: dtprint=0.01       ! interval between outputs
+      real, parameter :: dtprint=0.1       ! interval between outputs
 
       real, parameter :: rhoin = 10.0
       real, parameter :: rhoout = 0.001
@@ -59,6 +59,8 @@
 !   This is a vector that contains u(x,y) (do not touch)
 !------------------------------------------------------------------------------
       real :: u (neq,0:nx+1,0:ny+1)
+      real :: qu(neq)
+      real :: qp(neq)
 
         end module globals
 !------------------------------------------------------------------------------
@@ -493,4 +495,129 @@
 
   return
 end subroutine boundaries
+!=======================================================================
+
+
+!=======================================================================
+
+subroutine uprim(q,p)
+
+!    use parameters, only : neq, gamma
+     use globals
+    implicit none
+    real :: q(neq), p(neq)
+    real :: w, m2, lor
+    real*8 :: u2, alpha, chi
+
+    m2 = sum(q(2:3)**2)               ! v^2
+
+    call newrap(q, w, m2)
+
+    alpha = m2 / w**2   ! alpha < 1 !
+    u2  = alpha/(1d0-alpha)
+
+    lor = sqrt(1d0 + u2)
+
+    ! velocities
+    p(2:3) = q(2:3) / w
+
+    ! determination of the mass density
+    p(4) = q(1)/lor
+
+    ! thermal pressure
+    chi = (w - q(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
+
+    p(1)   = (gamma - 1d0)/gamma * chi
+
+    p(1) = max(p(1),1d-10*p(4))
+
+    if(p(4).lt.0d0) then
+      print*,'negative density in uprim'
+      stop
+    end if
+
+  end subroutine uprim
+! !------------------------------------------------------------------------------!
+
+! !------------------------------------------------------------------------------!
+  subroutine newrap(q, w, m2)
+
+!    use parameters, only : neq, gamma
+    use globals
+    implicit none
+!    real, intent(in) :: q(neq)
+    real, intent(in)  :: m2
+    real, intent(out) :: w
+    real, parameter :: eps = 1d-10
+    real :: a, b, c, mu, alpha, u2, lor, chi, dpdchi, dpdrho
+    real :: w0, dpdw, f, dfdw, pg, dv2dw, dchidw, drhodw, q(neq)
+    integer :: k
+
+    if(q(4)**2.lt.m2+q(1)**2.or.q(4).le.0d0) then
+   !   print*,'error in newrap'
+    !  stop
+    end if
+
+    a = 3d0;   b = 2d0 * (-q(4));   c = m2
+    if(b**2-a*c.lt.0d0) then
+       print*,'b**2-a*c<0'
+       stop
+    end if
+    w = ( - b + sqrt(b**2-a*c) ) / a   ! initial guess for w = rho * h * lor**2
+
+    w0 = w
+    mu = 1d0
+  100 continue
+    do k = 1, 40
+
+      alpha = m2 / w**2   ! alpha < 1 !
+
+      u2  = alpha/(1d0-alpha)
+
+      if(u2.lt.0d0) then
+        print*,'u2<0cc'
+        print*,q
+        stop
+      end if
+
+      lor = sqrt(1d0 + u2)
+
+      chi = (w - q(1)*(1d0+u2/(lor+1d0)))/(1d0+u2)
+
+      ! ideal gas case        
+      pg     = (gamma - 1d0)/gamma * chi
+      dpdchi = (gamma - 1d0)/gamma
+      dpdrho = 0d0
+
+      f = w - pg - q(4)  ! f(w) = 0
+
+      if(abs(f).lt.eps) return
+
+      dv2dw  = lor/w**3*m2
+      dchidw = 1d0/lor**2 + dv2dw*(q(1)+2d0*lor*chi)
+
+      drhodw = dv2dw*q(1)
+
+      dpdw = dpdchi*dchidw + dpdrho*drhodw
+
+      dfdw   = 1d0 - dpdw    ! df/dw
+
+      w  = w0 - mu * f / dfdw                       ! Newton-raphson iteration
+
+      if(abs(w-w0).lt.eps) return
+
+      w0 = w
+
+    end do
+
+    if(mu.gt.0.1) then
+      mu = mu/2d0
+      goto 100
+    end if
+
+  end subroutine newrap
+!------------------------------------------------------------------------------!
+
+
+
 !=======================================================================
