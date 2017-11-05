@@ -136,7 +136,7 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.1) then
+          if (rad < 0.0) then
            
             lorin=1/sqrt(1-(vxin**2+vyin**2))
             hin=1.+gamma/(gamma-1.)*pin/rhoin
@@ -173,17 +173,17 @@
           qu(3) = u(3,i,j)
           qu(4) = u(4,i,j)
 
-         ! print*, "entra p" ,rhoout , vxout , vyout , pout
+          print*, "entra p" ,rhoout , vxout , vyout , pout
 
-          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+          print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
 
-          !print*, "h      ",hout
+          print*, "h      ",hout
 
           call uprim(qu,qp)
 
           qpp(:,i,j)=qp
 
-         ! print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
+          print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
         end do
       end do
 
@@ -226,14 +226,14 @@
 !------------------------------------------------------------------------------
       do j=1,ny
         do i=1,nx
-         ! rho=u(1,i,j)
-         ! vx=u(2,i,j)/rho
-        !vy=u(3,i,j)/rho
-         ! P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
-          rho=qpp(1,i,j)
-          vx=qpp(2,i,j)
-          vy=qpp(3,i,j)
-          P=qpp(4,i,j)
+         rho=u(1,i,j)
+         vx=u(2,i,j)/rho
+        vy=u(3,i,j)/rho
+         P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
+          ! rho=qpp(1,i,j)
+          ! vx=qpp(2,i,j)
+          ! vy=qpp(3,i,j)
+          ! P=qpp(4,i,j)
           !print*,"densidad", rho
           write(10,'(7es12.5)') float(i)*dx,float(j)*dy,rho, vx, vy, P
         end do
@@ -265,15 +265,15 @@
       dt=1E30
       do i=0,nx+1
         do j=0,ny+1
-         ! rho=u(1,i,j)
-         ! vx=u(2,i,j)/rho
-         ! vy=u(3,i,j)/rho
-         ! P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+         rho=u(1,i,j)
+         vx=u(2,i,j)/rho
+         vy=u(3,i,j)/rho
+         P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
           
-          rho=qpp(1,i,j)
-          vx=qpp(2,i,j)
-          vy=qpp(3,i,j)
-          P=qpp(4,i,j)
+          ! rho=qpp(1,i,j)
+          ! vx=qpp(2,i,j)
+          ! vy=qpp(3,i,j)
+          ! P=qpp(4,i,j)
 
           cs=sqrt(gamma*P/rho)
           dt=min( dt,Co*dx/(abs(vx)+cs) )
@@ -329,24 +329,24 @@
 !   copy the up to the u
 !------------------------------------------------------------------------------
       u(:,:,:)=up(:,:,:)
-do i=0,nx+1
-  do j=0,ny+1
-      qu(1) = u(1,i,j)
-      qu(2) = u(2,i,j)
-      qu(3) = u(3,i,j)
-      qu(4) = u(4,i,j)
+! do i=0,nx+1
+!   do j=0,ny+1
+!       qu(1) = u(1,i,j)
+!       qu(2) = u(2,i,j)
+!       qu(3) = u(3,i,j)
+!       qu(4) = u(4,i,j)
 
-         ! print*, "entra p" ,rhoout , vxout , vyout , pout
+!          ! print*, "entra p" ,rhoout , vxout , vyout , pout
 
-          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+!           !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
 
-          !print*, "h      ",hout
+!           !print*, "h      ",hout
 
-      call uprim(qu,qp)
+!       call uprim(qu,qp)
 
-      qpp(:,i,j)=qp
-  end do
-end do
+!       qpp(:,i,j)=qp
+!   end do
+! end do
      
 
       return
@@ -360,13 +360,13 @@ end do
 !==============================================================================
 ! Calculation of the fluxes module
 !------------------------------------------------------------------------------
-      subroutine fluxes(nx,ny,neq,gamma,qpp,f,g,bound)
+      subroutine fluxes(nx,ny,neq,gamma,u,f,g,bound)
       implicit none
       integer, intent(in) :: nx,ny,neq
       real, intent(in) :: gamma
       real, intent(in) :: bound
-      !real, intent(in) :: u(neq,0:nx+1,0:ny+1)
-      real, intent(in) :: qpp(neq,0:nx+1,0:ny+1)
+      real, intent(in) :: u(neq,0:nx+1,0:ny+1)
+      !real, intent(in) :: qpp(neq,0:nx+1,0:ny+1)
       real, intent(out) :: f(neq,0:nx+1,0:ny+1), g(neq,0:nx+1,0:ny+1)
       integer :: i, j
       real :: rho, vx, vy, P, lor,h
@@ -375,15 +375,15 @@ end do
         do j=0,ny+1
           
 
-          !rho=u(1,i,j)
-          !vx=u(2,i,j)/rho
-          !vy=u(3,i,j)/rho
-          !P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+          rho=u(1,i,j)
+          vx=u(2,i,j)/rho
+          vy=u(3,i,j)/rho
+          P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
 
-          rho=qpp(1,i,j)
-          vx= qpp(2,i,j)
-          vy= qpp(3,i,j)
-          P= qpp(1,i,j)
+          ! rho=qpp(1,i,j)
+          ! vx= qpp(2,i,j)
+          ! vy= qpp(3,i,j)
+          ! P= qpp(1,i,j)
 
           lor=1/sqrt(1-(vx**2+vy**2))
           h=1.+gamma/(gamma-1.)*P/rho
