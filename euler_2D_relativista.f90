@@ -32,16 +32,16 @@
       real, parameter :: ymax=1., dy=ymax/float(ny)
       real, parameter :: gamma=4./3.
 
-      real, parameter :: tmax= 1.0        ! maximum integration time
-      real, parameter :: dtprint=0.1       ! interval between outputs
+      real, parameter :: tmax= 0.1        ! maximum integration time
+      real, parameter :: dtprint=0.005       ! interval between outputs
 
-      real, parameter :: rhoin = 12.0
-      real, parameter :: rhoout = 12.0 !density
-      real, parameter :: pin = 10.0
-      real, parameter :: pout = 10.0   !pressure
+      real, parameter :: rhoin = 100.0
+      real, parameter :: rhoout = 1.0 !density
+      real, parameter :: pin = 90.0
+      real, parameter :: pout = 1.0   !pressure
       real, parameter :: vxin = 0.0
       real, parameter :: vyin = 0.0
-      real, parameter :: vxout = 0.8    !velocity
+      real, parameter :: vxout = 0.0    !velocity
       real, parameter :: vyout = 0.0
       real, parameter :: xc = 0.5
       real, parameter :: yc = 0.5
@@ -61,7 +61,7 @@
       real :: u (neq,0:nx+1,0:ny+1)
       real :: qu(neq)
       real :: qp(neq)
-
+      real :: qpp(neq,0:nx+1,0:ny+1)
         end module globals
 !------------------------------------------------------------------------------
 ! End module globals
@@ -86,7 +86,7 @@
       call initconds(time, tprint, itprint)     ! conditions at t=0
       do while (time.lt.tmax)                   ! stops when t = tmax
         if(time.ge.tprint) then                 ! prints data in terminal
-!          write (*,*) itprint+1,time,tmax,dt
+          write (*,*) itprint+1,time,tmax,dt
           call output (itprint)                 ! print data output
           tprint=tprint+dtprint
           itprint=itprint+1
@@ -136,7 +136,7 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.0) then
+          if (rad < 0.1) then
            
             lorin=1/sqrt(1-(vxin**2+vyin**2))
             hin=1.+gamma/(gamma-1.)*pin/rhoin
@@ -173,15 +173,17 @@
           qu(3) = u(3,i,j)
           qu(4) = u(4,i,j)
 
-          print*, "entra p" ,rhoout , vxout , vyout , pout
+         ! print*, "entra p" ,rhoout , vxout , vyout , pout
 
-          print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
 
-          print*, "h      ",hout
+          !print*, "h      ",hout
 
           call uprim(qu,qp)
 
-          print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
+          qpp(:,i,j)=qp
+
+         ! print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
         end do
       end do
 
@@ -224,11 +226,16 @@
 !------------------------------------------------------------------------------
       do j=1,ny
         do i=1,nx
-          rho=u(1,i,j)
-          vx=u(2,i,j)/rho
-          vy=u(3,i,j)/rho
-          P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
-          write(10,'(7es12.5)') float(i)*dx,float(j)*dy,rho, vx, vy, P, u(4,i,j)
+         ! rho=u(1,i,j)
+         ! vx=u(2,i,j)/rho
+        !vy=u(3,i,j)/rho
+         ! P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
+          rho=qpp(1,i,j)
+          vx=qpp(2,i,j)
+          vy=qpp(3,i,j)
+          P=qpp(4,i,j)
+          !print*,"densidad", rho
+          write(10,'(7es12.5)') float(i)*dx,float(j)*dy,rho, vx, vy, P
         end do
         write(10,*)
       end do
@@ -258,10 +265,16 @@
       dt=1E30
       do i=0,nx+1
         do j=0,ny+1
-          rho=u(1,i,j)
-          vx=u(2,i,j)/rho
-          vy=u(3,i,j)/rho
-          P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+         ! rho=u(1,i,j)
+         ! vx=u(2,i,j)/rho
+         ! vy=u(3,i,j)/rho
+         ! P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+          
+          rho=qpp(1,i,j)
+          vx=qpp(2,i,j)
+          vy=qpp(3,i,j)
+          P=qpp(4,i,j)
+
           cs=sqrt(gamma*P/rho)
           dt=min( dt,Co*dx/(abs(vx)+cs) )
           dt=min( dt,Co*dy/(abs(vy)+cs) )
@@ -316,6 +329,25 @@
 !   copy the up to the u
 !------------------------------------------------------------------------------
       u(:,:,:)=up(:,:,:)
+do i=0,nx+1
+  do j=0,ny+1
+      qu(1) = u(1,i,j)
+      qu(2) = u(2,i,j)
+      qu(3) = u(3,i,j)
+      qu(4) = u(4,i,j)
+
+         ! print*, "entra p" ,rhoout , vxout , vyout , pout
+
+          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+
+          !print*, "h      ",hout
+
+      call uprim(qu,qp)
+
+      qpp(:,i,j)=qp
+  end do
+end do
+     
 
       return
       end subroutine ulax
@@ -328,32 +360,43 @@
 !==============================================================================
 ! Calculation of the fluxes module
 !------------------------------------------------------------------------------
-      subroutine fluxes(nx,ny,neq,gamma,u,f,g,bound)
+      subroutine fluxes(nx,ny,neq,gamma,qpp,f,g,bound)
       implicit none
       integer, intent(in) :: nx,ny,neq
       real, intent(in) :: gamma
       real, intent(in) :: bound
-      real, intent(in) :: u(neq,0:nx+1,0:ny+1)
+      !real, intent(in) :: u(neq,0:nx+1,0:ny+1)
+      real, intent(in) :: qpp(neq,0:nx+1,0:ny+1)
       real, intent(out) :: f(neq,0:nx+1,0:ny+1), g(neq,0:nx+1,0:ny+1)
       integer :: i, j
-      real :: rho, vx, vy, P
+      real :: rho, vx, vy, P, lor,h
 
       do i=0,nx+1
         do j=0,ny+1
-          rho=u(1,i,j)
-          vx=u(2,i,j)/rho
-          vy=u(3,i,j)/rho
-          P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+          
 
-          f(1,i,j)=rho*vx
-          f(2,i,j)=rho*vx*vx+P
-          f(3,i,j)=rho*vx*vy
-          f(4,i,j)=vx*(u(4,i,j)+P)
+          !rho=u(1,i,j)
+          !vx=u(2,i,j)/rho
+          !vy=u(3,i,j)/rho
+          !P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
 
-          g(1,i,j)=rho*vy
-          g(2,i,j)=rho*vx*vy
-          g(3,i,j)=rho*vy*vy+P
-          g(4,i,j)=vy*(u(4,i,j)+P)
+          rho=qpp(1,i,j)
+          vx= qpp(2,i,j)
+          vy= qpp(3,i,j)
+          P= qpp(1,i,j)
+
+          lor=1/sqrt(1-(vx**2+vy**2))
+          h=1.+gamma/(gamma-1.)*P/rho
+          
+          f(1,i,j)=rho*vx*lor
+          f(2,i,j)=rho*vx*vx*lor**2*h+P
+          f(3,i,j)=rho*vx*vy*lor**2*h
+          f(4,i,j)=rho*vx*lor**2*h
+
+          g(1,i,j)=rho*vy*lor
+          g(2,i,j)=rho*vx*vy*lor**2*h
+          g(3,i,j)=rho*vy*vy*lor**2*h+P
+          g(4,i,j)=rho*vy*lor**2*h
 
         end do
       end do
