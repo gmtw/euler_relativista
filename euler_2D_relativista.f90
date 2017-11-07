@@ -35,10 +35,10 @@
       real, parameter :: tmax= 0.1        ! maximum integration time
       real, parameter :: dtprint=0.005       ! interval between outputs
 
-      real, parameter :: rhoin = 100.0
+      real, parameter :: rhoin = 10.0
       real, parameter :: rhoout = 1.0 !density
-      real, parameter :: pin = 90.0
-      real, parameter :: pout = 1.0   !pressure
+      real, parameter :: pin = 9.0
+      real, parameter :: pout = 2.0   !pressure
       real, parameter :: vxin = 0.0
       real, parameter :: vyin = 0.0
       real, parameter :: vxout = 0.0    !velocity
@@ -183,7 +183,7 @@
 
           qpp(:,i,j)=qp
 
-         ! print*, "sale  p" , qp(1) , qp(2) , qp(3) , qp(4)  
+         ! print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
         end do
       end do
 
@@ -228,13 +228,15 @@
         do i=1,nx
          ! rho=u(1,i,j)
          ! vx=u(2,i,j)/rho
-        !vy=u(3,i,j)/rho
+         ! vy=u(3,i,j)/rho
          ! P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
+
+
           rho=qpp(1,i,j)
           vx=qpp(2,i,j)
           vy=qpp(3,i,j)
           P=qpp(4,i,j)
-          !print*,"densidad", rho
+          
           write(10,'(7es12.5)') float(i)*dx,float(j)*dy,rho, vx, vy, P
         end do
         write(10,*)
@@ -257,7 +259,7 @@
       implicit none
       real, intent(out) ::dt
       real :: rho, vx, vy, P, cs
-      integer :: i,j
+      integer :: i,j,itprint
 
 !------------------------------------------------------------------------------
 ! Calculate the CFL criterium
@@ -278,6 +280,11 @@
           cs=sqrt(gamma*P/rho)
           dt=min( dt,Co*dx/(abs(vx)+cs) )
           dt=min( dt,Co*dy/(abs(vy)+cs) )
+          
+          ! print*, dt
+          
+!          print*, "entra p" ,rhoout , vxout , vyout , pout
+!          print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
 
         end do
       end do
@@ -318,6 +325,8 @@
           up(:,i,j)=0.25*( u(:,i-1,j)+u(:,i+1,j)+u(:,i,j-1)+u(:,i,j+1) ) &
                          -dtx*0.5*(f(:,i+1,j)-f(:,i-1,j) ) &
                          -dty*0.5*(g(:,i,j+1)-g(:,i,j-1) )
+
+
         end do
       end do
 
@@ -329,24 +338,30 @@
 !   copy the up to the u
 !------------------------------------------------------------------------------
       u(:,:,:)=up(:,:,:)
-do i=0,nx+1
-  do j=0,ny+1
-      qu(1) = u(1,i,j)
-      qu(2) = u(2,i,j)
-      qu(3) = u(3,i,j)
-      qu(4) = u(4,i,j)
+     ! print*,u
 
-         ! print*, "entra p" ,rhoout , vxout , vyout , pout
+ do i=1,nx
+   do j=1,ny
+       qu(1) = u(1,i,j)
+       qu(2) = u(2,i,j)
+       qu(3) = u(3,i,j)
+       qu(4) = u(4,i,j)
 
-          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+ ! print*, u(:,:,:)
 
-          !print*, "h      ",hout
+       call uprim(qu,qp)
+       
 
-      call uprim(qu,qp)
+       qpp(1,i,j)=qp(1)
+       qpp(2,i,j)=qp(2)
+       qpp(3,i,j)=qp(3)
+       qpp(4,i,j)=qp(4)
 
-      qpp(:,i,j)=qp
-  end do
-end do
+
+      ! print*, "entra p" ,rhoout , vxout , vyout , pout
+      ! print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
+   end do
+ end do
      
 
       return
@@ -383,7 +398,7 @@ end do
           rho=qpp(1,i,j)
           vx= qpp(2,i,j)
           vy= qpp(3,i,j)
-          P= qpp(1,i,j)
+          P= qpp(4,i,j)
 
           lor=1/sqrt(1-(vx**2+vy**2))
           h=1.+gamma/(gamma-1.)*P/rho
@@ -397,6 +412,8 @@ end do
           g(2,i,j)=rho*vx*vy*lor**2*h
           g(3,i,j)=rho*vy*vy*lor**2*h+P
           g(4,i,j)=rho*vy*lor**2*h
+
+         ! print*,g
 
         end do
       end do
@@ -418,7 +435,7 @@ end do
       real, intent(in) :: bound
       real, intent(out) ::u(neq,0:nx+1,0:ny+1)
       real, intent(in) :: time,gamma
-      integer :: j , i
+      integer :: i,j
       real :: rhoj , vj, Pj, Tauj , rhoi, vi, Pi, Taui, theta
 
 !------------------------------------------------------------------------------
