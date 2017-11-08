@@ -30,15 +30,15 @@
       integer, parameter :: nx=100, ny=100, neq=4
       real, parameter :: xmax=1., dx=xmax/float(nx)
       real, parameter :: ymax=1., dy=ymax/float(ny)
-      real, parameter :: gamma=4./3.
+      real, parameter :: gamma=5./3.
 
-      real, parameter :: tmax= 0.1        ! maximum integration time
-      real, parameter :: dtprint=0.005       ! interval between outputs
+      real, parameter :: tmax= 1.5        ! maximum integration time
+      real, parameter :: dtprint=0.05       ! interval between outputs
 
-      real, parameter :: rhoin = 10.0
+      real, parameter :: rhoin = 100.0
       real, parameter :: rhoout = 1.0 !density
-      real, parameter :: pin = 9.0
-      real, parameter :: pout = 2.0   !pressure
+      real, parameter :: pin = 10.0
+      real, parameter :: pout = 0.2   !pressure
       real, parameter :: vxin = 0.0
       real, parameter :: vyin = 0.0
       real, parameter :: vxout = 0.0    !velocity
@@ -51,7 +51,7 @@
 !--------------------------------------
 ! Boundary Conditions
 ! 0.0 = open boundary conditions
-! 1.0 = Jet injection
+! 10.0 = Jet injection
 !--------------------------------------
       real, parameter :: bound=0.0
 
@@ -168,10 +168,7 @@
            ! u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
 
           end if
-          qu(1) = u(1,i,j)
-          qu(2) = u(2,i,j)
-          qu(3) = u(3,i,j)
-          qu(4) = u(4,i,j)
+         
 
          ! print*, "entra p" ,rhoout , vxout , vyout , pout
 
@@ -179,9 +176,7 @@
 
           !print*, "h      ",hout
 
-          call uprim(qu,qp)
-
-          qpp(:,i,j)=qp
+         
 
          ! print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
         end do
@@ -230,7 +225,14 @@
          ! vx=u(2,i,j)/rho
          ! vy=u(3,i,j)/rho
          ! P=(u(4,i,j)-0.5*rho*(vx**2)*(vy**2))*(gamma-1.)
+          qu(1) = u(1,i,j)
+          qu(2) = u(2,i,j)
+          qu(3) = u(3,i,j)
+          qu(4) = u(4,i,j)
 
+          call uprim(qu,qp)
+
+          qpp(:,i,j)=qp
 
           rho=qpp(1,i,j)
           vx=qpp(2,i,j)
@@ -271,6 +273,14 @@
          ! vx=u(2,i,j)/rho
          ! vy=u(3,i,j)/rho
          ! P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+          qu(1) = u(1,i,j)
+          qu(2) = u(2,i,j)
+          qu(3) = u(3,i,j)
+          qu(4) = u(4,i,j)
+
+          call uprim(qu,qp)
+
+          qpp(:,i,j)=qp
           
           rho=qpp(1,i,j)
           vx=qpp(2,i,j)
@@ -340,29 +350,11 @@
       u(:,:,:)=up(:,:,:)
      ! print*,u
 
- do i=1,nx
-   do j=1,ny
-       qu(1) = u(1,i,j)
-       qu(2) = u(2,i,j)
-       qu(3) = u(3,i,j)
-       qu(4) = u(4,i,j)
+ 
 
- ! print*, u(:,:,:)
-
-       call uprim(qu,qp)
-       
-
-       qpp(1,i,j)=qp(1)
-       qpp(2,i,j)=qp(2)
-       qpp(3,i,j)=qp(3)
-       qpp(4,i,j)=qp(4)
-
-
-      ! print*, "entra p" ,rhoout , vxout , vyout , pout
+       ! print*, "entra p" ,rhoout , vxout , vyout , pout
       ! print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
-   end do
- end do
-     
+   
 
       return
       end subroutine ulax
@@ -375,13 +367,14 @@
 !==============================================================================
 ! Calculation of the fluxes module
 !------------------------------------------------------------------------------
-      subroutine fluxes(nx,ny,neq,gamma,qpp,f,g,bound)
+      subroutine fluxes(nx,ny,neq,gamma,u,f,g,bound)
+      use globals, only : qu, qpp,qp
       implicit none
       integer, intent(in) :: nx,ny,neq
       real, intent(in) :: gamma
       real, intent(in) :: bound
-      !real, intent(in) :: u(neq,0:nx+1,0:ny+1)
-      real, intent(in) :: qpp(neq,0:nx+1,0:ny+1)
+      real, intent(in) :: u(neq,0:nx+1,0:ny+1)
+     ! real :: qpp(neq,0:nx+1,0:ny+1),qu(1),q(2) ,qp
       real, intent(out) :: f(neq,0:nx+1,0:ny+1), g(neq,0:nx+1,0:ny+1)
       integer :: i, j
       real :: rho, vx, vy, P, lor,h
@@ -394,6 +387,14 @@
           !vx=u(2,i,j)/rho
           !vy=u(3,i,j)/rho
           !P=(u(4,i,j)-0.5*rho*(vx**2+vy**2))*(gamma-1.)
+          qu(1) = u(1,i,j)
+          qu(2) = u(2,i,j)
+          qu(3) = u(3,i,j)
+          qu(4) = u(4,i,j)
+
+          call uprim(qu,qp)
+
+          qpp(:,i,j)=qp
 
           rho=qpp(1,i,j)
           vx= qpp(2,i,j)
