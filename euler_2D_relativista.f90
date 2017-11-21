@@ -39,8 +39,8 @@
       real, parameter :: rhoout = 1.0 !density
       real, parameter :: pin = 10.0
       real, parameter :: pout = 0.2   !pressure
-      real, parameter :: vxin = 0.0
-      real, parameter :: vyin = 0.0
+      real, parameter :: vxin = 0.31
+      real, parameter :: vyin = 0.9507
       real, parameter :: vxout = 0.0    !velocity
       real, parameter :: vyout = 0.0
       real, parameter :: xc = 0.5
@@ -549,12 +549,22 @@
 !  Jet injection
 !---------------------------------------
          if(bound.eq.10.)then
-           rhoj=9.5
-           Tauj=100.2
-           vj=0.5 !+ 0.3*sin(2*3.1416*time/Tauj)
-           Pj=0.01     !0.1
+           rhojet=9.5
+           Taujet=100.2
+           vxjet=0.5 !+ 0.3*sin(2*3.1416*time/Tauj)
+           vyjet=0.0
+           Pjet=0.01     !0.1
            theta=50
 
+          do j=0,ny
+            lorjet=1/sqrt(1-(vxjet**2+vyjet**2))
+            hjet=1.+gamma/(gamma-1.)*pjet/rhojet
+           
+            u(1,0,j)=rhojet*lorjet
+            u(2,0,j)=rhojet*vxjet*lorjet**2*hjet
+            u(3,0,j)=rhojet*vyjet*lorjet**2*hjet
+            u(4,0,j)=rhojet*lorjet**2*hjet-pjet
+          end do
 !          do j=0,ny
 !             if (abs(j-ny/2) <= ny/20)  then
 !               u(1,0,j)=rhoj
@@ -568,18 +578,18 @@
 !             end if
 !           end do
 
-          do j=0,nx
-             if (abs(j-nx/2) <= nx/20)  then
-               u(1,j,0)=rhoj
-               if((j-nx/2).ge.0)then
-                 u(2,j,0)= 0.5*rhoj*vj     !*COS(45*3.14*time/180)
-               else
-                 u(2,j,0)=-0.5*rhoj*vj   !*COS(45*3.14*time/180)
-               end if
-               u(3,j,0)=1.0*rhoj*vj   !*sin(45*3.14*time/180)
-               u(4,j,0)=0.5*rhoj*vj**2 + Pj/(gamma-1.)
-             end if
-           end do
+          ! do j=0,nx
+          !    if (abs(j-nx/2) <= nx/20)  then
+          !      u(1,j,0)=rhoj
+          !      if((j-nx/2).ge.0)then
+          !        u(2,j,0)= 0.5*rhoj*vj     !*COS(45*3.14*time/180)
+          !      else
+          !        u(2,j,0)=-0.5*rhoj*vj   !*COS(45*3.14*time/180)
+          !      end if
+          !      u(3,j,0)=1.0*rhoj*vj   !*sin(45*3.14*time/180)
+          !      u(4,j,0)=0.5*rhoj*vj**2 + Pj/(gamma-1.)
+          !    end if
+          !  end do
 
 
          end if
