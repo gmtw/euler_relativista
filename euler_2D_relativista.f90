@@ -27,10 +27,10 @@
 !
 !   **we can modify these values**
 !------------------------------------------------------------------------------
-      integer, parameter :: nx=100, ny=100, neq=4
-      real, parameter :: xmax=1., dx=xmax/float(nx)
-      real, parameter :: ymax=1., dy=ymax/float(ny)
-      real, parameter :: gamma=5./3.
+      integer, parameter :: nx=200, ny=200, neq=4
+      real, parameter :: xmax=2., dx=xmax/float(nx)
+      real, parameter :: ymax=2., dy=ymax/float(ny)
+      real, parameter :: gamma=4./3.
 
       real, parameter :: tmax= 1.5        ! maximum integration time
       real, parameter :: dtprint=0.05       ! interval between outputs
@@ -39,8 +39,8 @@
       real, parameter :: rhoout = 1.0 !density
       real, parameter :: pin = 10.0
       real, parameter :: pout = 0.2   !pressure
-      real, parameter :: vxin = 0.31
-      real, parameter :: vyin = 0.9507
+      real, parameter :: vxin = 0.0
+      real, parameter :: vyin = 0.0
       real, parameter :: vxout = 0.0    !velocity
       real, parameter :: vyout = 0.0
       real, parameter :: xc = 0.5
@@ -53,7 +53,7 @@
 ! 0.0 = open boundary conditions
 ! 10.0 = Jet injection
 !--------------------------------------
-      real, parameter :: bound=0.0
+      real, parameter :: bound=10.0
 
 !------------------------------------------------------------------------------
 !   This is a vector that contains u(x,y) (do not touch)
@@ -136,7 +136,7 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.1) then
+          if (rad < 0.0) then
            
             lorin=1/sqrt(1-(vxin**2+vyin**2))
             hin=1.+gamma/(gamma-1.)*pin/rhoin
@@ -437,7 +437,7 @@
       real, intent(out) ::u(neq,0:nx+1,0:ny+1)
       real, intent(in) :: time,gamma
       integer :: i,j
-      real :: rhoj , vj, Pj, Tauj , rhoi, vi, Pi, Taui, theta
+      real :: rhojet , vjet, Pjet, Taujet , rhoijet, theta, lorjet, hjet, vxjet, vyjet
 
 !------------------------------------------------------------------------------
 ! Periodic or open boundaries, or your own boundary condition
@@ -550,20 +550,35 @@
 !---------------------------------------
          if(bound.eq.10.)then
            rhojet=9.5
-           Taujet=100.2
-           vxjet=0.5 !+ 0.3*sin(2*3.1416*time/Tauj)
-           vyjet=0.0
-           Pjet=0.01     !0.1
+           Taujet=0.5
+           vxjet=0.9 !+ 0.3*sin(2*3.1416*time/Tauj)
+           vyjet=0.1
+           Pjet=0.1     !0.1
            theta=50
 
           do j=0,ny
+           
             lorjet=1/sqrt(1-(vxjet**2+vyjet**2))
             hjet=1.+gamma/(gamma-1.)*pjet/rhojet
-           
+
+           if(abs(j-nx/2) <= nx/40) then
             u(1,0,j)=rhojet*lorjet
-            u(2,0,j)=rhojet*vxjet*lorjet**2*hjet
-            u(3,0,j)=rhojet*vyjet*lorjet**2*hjet
+              
+              if((j-nx/2).ge.0)then
+                u(2,0,j)=1.0*rhojet*vxjet*lorjet**2*hjet!*abs(COS(2*3.14*time/Taujet))
+
+                u(3,0,j)=1.0*rhojet*vyjet*lorjet**2*hjet
+              else
+                u(2,0,j)=1.0*rhojet*vxjet*lorjet**2*hjet!*abs(COS(2*3.14*time/Taujet))
+
+                u(3,0,j)=-1.0*rhojet*vyjet*lorjet**2*hjet
+              end if
+            
+            !u(3,0,j)=rhojet*vyjet*lorjet**2*hjet
+
             u(4,0,j)=rhojet*lorjet**2*hjet-pjet
+           end if
+
           end do
 !          do j=0,ny
 !             if (abs(j-ny/2) <= ny/20)  then
@@ -633,7 +648,7 @@ subroutine uprim(qu,qp)
 
     qp(4)   = (gamma - 1.0)/gamma * chi
 
-    qp(4) = max(qp(4),1d-10*qp(1))
+    qp(4) =max(qp(4),1d-10*qp(1))
 
     if(qp(1).lt.0.0) then
       print*,'negative density in uprim'
