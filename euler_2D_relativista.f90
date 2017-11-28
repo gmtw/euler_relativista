@@ -28,24 +28,31 @@
 !
 !   **we can modify these values**
 !------------------------------------------------------------------------------
-      integer, parameter :: nx=200, ny=200, neq=4
-      real, parameter :: xmax=2., dx=xmax/float(nx)
-      real, parameter :: ymax=2., dy=ymax/float(ny)
+      integer, parameter :: nx=500, ny=500, neq=4
+      real, parameter :: xmax=5., dx=xmax/float(nx)
+      real, parameter :: ymax=5., dy=ymax/float(ny)
       real, parameter :: gamma=4./3.
 
-      real, parameter :: tmax= 1.5        ! maximum integration time
-      real, parameter :: dtprint=0.05       ! interval between outputs
+      real, parameter :: tmax= 8.0        ! maximum integration time
+      real, parameter :: dtprint=0.15       ! interval between outputs
 
       real, parameter :: rhoin = 100.0
       real, parameter :: rhoout = 1.0 !density
+      real, parameter :: rholeft=5.0
+      real, parameter :: rhoright= 0.01
+
       real, parameter :: pin = 10.0
       real, parameter :: pout = 0.2   !pressure
+      real, parameter :: pleft=5.0
+      real, parameter :: pright=0.1
+
       real, parameter :: vxin = 0.0
       real, parameter :: vyin = 0.0
       real, parameter :: vxout = 0.0    !velocity
       real, parameter :: vyout = 0.0
       real, parameter :: xc = 0.5
       real, parameter :: yc = 0.5
+
 
       real, parameter :: Co = 0.7
 
@@ -122,7 +129,7 @@
       real, intent(out) :: time, tprint
       integer, intent (out) :: itprint
       integer ::i,j
-      real :: x,y, rad, lorin,lorout, hin,hout
+      real :: x,y, rad, lorin,lorout, hin,hout, lorleft,lorright,hleft,hright
 
 !------------------------------------------------------------------------------
 ! For the 2D circular blast:
@@ -137,39 +144,62 @@
           y=float(j)*dy          ! obtain the position $y_j$
           rad=sqrt((x-xc)**2+(y-yc)**2)
 
-          if (rad < 0.0) then
+          ! if (rad < 0.0) then
            
-            lorin=1/sqrt(1-(vxin**2+vyin**2))
-            hin=1.+gamma/(gamma-1.)*pin/rhoin
+          !   lorin=1/sqrt(1-(vxin**2+vyin**2))
+          !   hin=1.+gamma/(gamma-1.)*pin/rhoin
            
-            u(1,i,j)=rhoin*lorin
-            u(2,i,j)=rhoin*vxin*lorin**2*hin
-            u(3,i,j)=rhoin*vyin*lorin**2*hin
-            u(4,i,j)=rhoin*lorin**2*hin-pin
+          !   u(1,i,j)=rhoin*lorin
+          !   u(2,i,j)=rhoin*vxin*lorin**2*hin
+          !   u(3,i,j)=rhoin*vyin*lorin**2*hin
+          !   u(4,i,j)=rhoin*lorin**2*hin-pin
 
-           ! u(1,i,j)=rhoin
-           ! u(2,i,j)=rhoin*vxin
-           ! u(3,i,j)=rhoin*vyin
-            !u(4,i,j)=rhoin-pin
-           ! u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+          !  ! u(1,i,j)=rhoin
+          !  ! u(2,i,j)=rhoin*vxin
+          !  ! u(3,i,j)=rhoin*vyin
+          !   !u(4,i,j)=rhoin-pin
+          !  ! u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+
+          ! else
+          !   lorout=1./sqrt(1.-(vxout**2+vyout**2))
+          !   hout=1.+gamma/(gamma-1.)*pout/rhoout
+
+          !   u(1,i,j)=rhoout*lorout
+          !   u(2,i,j)=rhoout*vxout*lorout**2*hout
+          !   u(3,i,j)=rhoout*vyout*lorout**2*hout
+          !   u(4,i,j)=rhoout*lorout**2*hout-pout
+
+          !  ! u(1,i,j)=rhoout
+          !  ! u(2,i,j)=rhoout*vxout
+          !  ! u(3,i,j)=rhoout*vyout
+          !   !u(4,i,j)=rhoout-pout
+          !  ! u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+
+          ! end if
+         
+          if (i <= nx/2.0) then
+            
+            lorleft=1./sqrt(1.-(vxout**2+vyout**2))
+            hleft=1.+gamma/(gamma-1.)*pout/rholeft
+
+            u(1,i,j)=rholeft*lorleft
+            u(2,i,j)=rholeft*vxout*lorleft**2*hleft
+            u(3,i,j)=rholeft*vyout*lorleft**2*hleft
+            u(4,i,j)=rholeft*lorleft**2*hleft-pout
+
+            !print*, x
 
           else
-            lorout=1./sqrt(1.-(vxout**2+vyout**2))
-            hout=1.+gamma/(gamma-1.)*pout/rhoout
 
-            u(1,i,j)=rhoout*lorout
-            u(2,i,j)=rhoout*vxout*lorout**2*hout
-            u(3,i,j)=rhoout*vyout*lorout**2*hout
-            u(4,i,j)=rhoout*lorout**2*hout-pout
+            lorright=1./sqrt(1.-(vxout**2+vyout**2))
+            hright=1.+gamma/(gamma-1.)*pout/rhoright
 
-           ! u(1,i,j)=rhoout
-           ! u(2,i,j)=rhoout*vxout
-           ! u(3,i,j)=rhoout*vyout
-            !u(4,i,j)=rhoout-pout
-           ! u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+            u(1,i,j)=rhoright*lorright
+            u(2,i,j)=rhoright*vxout*lorright**2*hright
+            u(3,i,j)=rhoright*vyout*lorright**2*hright
+            u(4,i,j)=rhoright*lorright**2*hright-pout
 
-          end if
-         
+          endif
 
          ! print*, "entra p" ,rhoout , vxout , vyout , pout
 
@@ -562,17 +592,17 @@
             lorjet=1/sqrt(1-(vxjet**2+vyjet**2))
             hjet=1.+gamma/(gamma-1.)*pjet/rhojet
 
-           if(abs(j-nx/2) <= nx/40) then
+           if(abs(j-nx/2) <= nx/20) then
             u(1,0,j)=rhojet*lorjet
               
               if((j-nx/2).ge.0)then
                 u(2,0,j)=1.0*rhojet*vxjet*lorjet**2*hjet!*abs(COS(2*3.14*time/Taujet))
 
-                u(3,0,j)=1.0*rhojet*vyjet*lorjet**2*hjet*COS(2*3.14*time/Taujet)
+                u(3,0,j)=1.0*rhojet*vyjet*lorjet**2*hjet!*COS(2*3.14*time/Taujet)
               else
                 u(2,0,j)=1.0*rhojet*vxjet*lorjet**2*hjet!*abs(COS(2*3.14*time/Taujet))
 
-                u(3,0,j)=1.0*rhojet*vyjet*lorjet**2*hjet*COS(2*3.14*time/Taujet)
+                u(3,0,j)=-1.0*rhojet*vyjet*lorjet**2*hjet!*COS(2*3.14*time/Taujet)
               end if
             
             !u(3,0,j)=rhojet*vyjet*lorjet**2*hjet
