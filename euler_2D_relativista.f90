@@ -28,16 +28,16 @@
 !
 !   **we can modify these values**
 !------------------------------------------------------------------------------
-      integer, parameter :: nx=500, ny=500, neq=4
-      real, parameter :: xmax=5., dx=xmax/float(nx)
-      real, parameter :: ymax=5., dy=ymax/float(ny)
+      integer, parameter :: nx=200, ny=200, neq=4
+      real, parameter :: xmax=2., dx=xmax/float(nx)
+      real, parameter :: ymax=2., dy=ymax/float(ny)
       real, parameter :: gamma=4./3.
 
-      real, parameter :: tmax= 8.0        ! maximum integration time
-      real, parameter :: dtprint=0.15       ! interval between outputs
+      real, parameter :: tmax= 4.0        ! maximum integration time
+      real, parameter :: dtprint=0.08       ! interval between outputs
 
       real, parameter :: rhoin = 100.0
-      real, parameter :: rhoout = 1.0 !density
+      real, parameter :: rhoout = 5.0 !density
       real, parameter :: rholeft=5.0
       real, parameter :: rhoright= 0.01
 
@@ -154,12 +154,6 @@
           !   u(3,i,j)=rhoin*vyin*lorin**2*hin
           !   u(4,i,j)=rhoin*lorin**2*hin-pin
 
-          !  ! u(1,i,j)=rhoin
-          !  ! u(2,i,j)=rhoin*vxin
-          !  ! u(3,i,j)=rhoin*vyin
-          !   !u(4,i,j)=rhoin-pin
-          !  ! u(4,i,j)=pin/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
-
           ! else
           !   lorout=1./sqrt(1.-(vxout**2+vyout**2))
           !   hout=1.+gamma/(gamma-1.)*pout/rhoout
@@ -169,47 +163,42 @@
           !   u(3,i,j)=rhoout*vyout*lorout**2*hout
           !   u(4,i,j)=rhoout*lorout**2*hout-pout
 
-          !  ! u(1,i,j)=rhoout
-          !  ! u(2,i,j)=rhoout*vxout
-          !  ! u(3,i,j)=rhoout*vyout
-          !   !u(4,i,j)=rhoout-pout
-          !  ! u(4,i,j)=pout/(gamma-1.) + 0.5*u(2,i,j)*u(2,i,j)/u(1,i,j) + 0.5*u(3,i,j)*u(3,i,j)/u(1,i,j)
+         
 
           ! end if
          
-          if (i <= nx/2.0) then
+          !if (i <= nx/2.0) then
             
-            lorleft=1./sqrt(1.-(vxout**2+vyout**2))
-            hleft=1.+gamma/(gamma-1.)*pout/rholeft
+            ! lorleft=1./sqrt(1.-(vxout**2+vyout**2))
+            ! hleft=1.+gamma/(gamma-1.)*pout/rholeft
 
-            u(1,i,j)=rholeft*lorleft
-            u(2,i,j)=rholeft*vxout*lorleft**2*hleft
-            u(3,i,j)=rholeft*vyout*lorleft**2*hleft
-            u(4,i,j)=rholeft*lorleft**2*hleft-pout
+            ! u(1,i,j)=rholeft*lorleft
+            ! u(2,i,j)=rholeft*vxout*lorleft**2*hleft
+            ! u(3,i,j)=rholeft*vyout*lorleft**2*hleft
+            ! u(4,i,j)=rholeft*lorleft**2*hleft-pout
 
             !print*, x
 
-          else
+          !else
 
-            lorright=1./sqrt(1.-(vxout**2+vyout**2))
-            hright=1.+gamma/(gamma-1.)*pout/rhoright
+            ! lorright=1./sqrt(1.-(vxout**2+vyout**2))
+            ! hright=1.+gamma/(gamma-1.)*pout/rhoright
 
-            u(1,i,j)=rhoright*lorright
-            u(2,i,j)=rhoright*vxout*lorright**2*hright
-            u(3,i,j)=rhoright*vyout*lorright**2*hright
-            u(4,i,j)=rhoright*lorright**2*hright-pout
+            ! u(1,i,j)=rhoright*lorright
+            ! u(2,i,j)=rhoright*vxout*lorright**2*hright
+            ! u(3,i,j)=rhoright*vyout*lorright**2*hright
+            ! u(4,i,j)=rhoright*lorright**2*hright-pout
 
-          endif
+          !endif
 
-         ! print*, "entra p" ,rhoout , vxout , vyout , pout
+            lorout=1./sqrt(1.-(vxout**2+vyout**2))
+            hout=1.+gamma/(gamma-1.)*pout/((1.0/(x**2+dx))*rhoout)
 
-          !print*, "sale  u", qu(1),qu(2), qu(3),qu(4)
+            u(1,i,j)=((1.0/(x**2+dx))*rhoout)*lorout
+            u(2,i,j)=((1.0/(x**2+dx))*rhoout)*vxout*lorout**2*hout
+            u(3,i,j)=((1.0/(x**2+dx))*rhoout)*vyout*lorout**2*hout
+            u(4,i,j)=((1.0/(x**2+dx))*rhoout)*lorout**2*hout-pout
 
-          !print*, "h      ",hout
-
-         
-
-         ! print*, "sale  p" , qpp(1,i,j) , qpp(2,i,j) , qpp(3,i,j) , qpp(4,i,j)  
         end do
       end do
 
@@ -580,7 +569,7 @@
 !  Jet injection
 !---------------------------------------
          if(bound.eq.10.)then
-           rhojet=9.5
+           rhojet=50.5
            Taujet=0.5
            vxjet=0.9 !+ 0.3*sin(2*3.1416*time/Tauj)
            vyjet=0.1
@@ -592,7 +581,7 @@
             lorjet=1/sqrt(1-(vxjet**2+vyjet**2))
             hjet=1.+gamma/(gamma-1.)*pjet/rhojet
 
-           if(abs(j-nx/2) <= nx/20) then
+           if(abs(j-nx/2) <= nx/50) then
             u(1,0,j)=rhojet*lorjet
               
               if((j-nx/2).ge.0)then
