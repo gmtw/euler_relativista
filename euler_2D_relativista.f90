@@ -29,11 +29,11 @@
 !   **we can modify these values**
 !------------------------------------------------------------------------------
       integer, parameter :: nx=200, ny=200, neq=4
-      real, parameter :: xmax=12., dx=xmax/float(nx)
-      real, parameter :: ymax=12., dy=ymax/float(ny)
+      real, parameter :: xmax=1., dx=xmax/float(nx)
+      real, parameter :: ymax=1., dy=ymax/float(ny)
       real, parameter :: gamma=4./3.
 
-      real, parameter :: tmax= 8.0        ! maximum integration time
+      real, parameter :: tmax= 2.0        ! maximum integration time
       real, parameter :: dtprint=0.1       ! interval between outputs
 
       real, parameter :: rhoin = 100.0
